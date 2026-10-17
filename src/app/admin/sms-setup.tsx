@@ -86,8 +86,48 @@ export function SmsSetup({
     setResult(`Sent to ${destination}:\n"${body.message}"`);
   }
 
-  const messageTestRows: { key: string; label: string; onSend: (target: "self" | "group") => void }[] = [
-    { key: "connectivity", label: "Connectivity test", onSend: sendConnectivityTest },
+  async function sendDraftSample(kind: "welcome" | "pick") {
+    setPending(true);
+    setError(null);
+    setResult(null);
+    const res = await fetch("/api/admin/sms/test-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind }),
+    });
+    const body = await res.json();
+    setPending(false);
+    if (!res.ok) {
+      setError(body.error ?? "Something went wrong.");
+      return;
+    }
+    setResult(`Sent to your phone (sample draft order; the real one is drawn at start):\n"${body.message}"`);
+  }
+
+  // Draft samples go to "me" only: the real ones go to the group on their own.
+  const messageTestRows: {
+    key: string;
+    label: string;
+    onSend: (target: "self" | "group") => void;
+    selfOnly?: boolean;
+  }[] = [
+    {
+      key: "connectivity",
+      label: "Connectivity test",
+      onSend: sendConnectivityTest,
+    },
+    {
+      key: "welcome",
+      label: "Welcome text (draft start)",
+      onSend: () => sendDraftSample("welcome"),
+      selfOnly: true,
+    },
+    {
+      key: "pick",
+      label: "Draft pick text",
+      onSend: () => sendDraftSample("pick"),
+      selfOnly: true,
+    },
     { key: "weekly", label: "Weekly text", onSend: sendGenerated },
   ];
 
@@ -95,8 +135,8 @@ export function SmsSetup({
     <div className="space-y-6">
       {missingPhoneNames.length > 0 && (
         <p className="text-sm text-bad">
-          Missing phone numbers for: {missingPhoneNames.join(", ")}. They need to add theirs on
-          My Picks first.
+          Missing phone numbers for: {missingPhoneNames.join(", ")}. They need to add theirs on My Picks
+          first.
         </p>
       )}
 
@@ -135,12 +175,8 @@ export function SmsSetup({
                 <th className="w-1/3 px-3 py-2 text-left text-xs font-medium text-ink-muted uppercase">
                   Message
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-ink-muted uppercase">
-                  To me
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-ink-muted uppercase">
-                  To group
-                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-ink-muted uppercase">To me</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-ink-muted uppercase">To group</th>
               </tr>
             </thead>
             <tbody>
@@ -158,7 +194,9 @@ export function SmsSetup({
                     </button>
                   </td>
                   <td className="px-3 py-2.5">
-                    {configured ? (
+                    {row.selfOnly ? (
+                      <span className="text-xs text-ink-muted">Sent automatically</span>
+                    ) : configured ? (
                       <button
                         type="button"
                         onClick={() => row.onSend("group")}

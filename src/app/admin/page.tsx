@@ -20,6 +20,8 @@ export const dynamic = "force-dynamic";
 
 const MESSAGE_KIND_LABELS: Record<string, string> = {
   draft: "Draft update",
+  draft_welcome_test: "Welcome text (test)",
+  draft_pick_test: "Draft pick text (test)",
   weekly: "Weekly text",
   weekly_fallback: "Weekly text (fallback)",
   weekly_test: "Weekly text (test)",

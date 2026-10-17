@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { isDraftComplete, roundForPick, userIdOnTheClock } from "@/lib/domain/draft";
 import { sendGroupText } from "@/lib/notify/sms";
+import { pickLabel, pickText } from "@/lib/notify/draft-texts";
 import type { Side } from "@/lib/supabase/types";
 
 export async function POST(request: Request) {
@@ -100,25 +101,24 @@ export async function POST(request: Request) {
     db.from("teams").select("name, win_total_line").eq("id", teamId).single(),
     db.from("profiles").select("display_name").eq("id", onTheClock).single(),
   ]);
-  const teamLabel = team
-    ? `${team.name} ${side}${team.win_total_line != null ? ` ${team.win_total_line}` : ""}`
-    : `team ${teamId} ${side}`;
-
-  if (complete) {
-    await sendGroupText(`${picker?.display_name ?? "Someone"} took ${teamLabel}. Draft complete! 🏆`, "draft", {
-      channel: "draft",
-    });
-  } else {
-    const nextOnTheClock = userIdOnTheClock(session.snake_order, nextPickIndex);
-    const { data: nextPicker } = nextOnTheClock
-      ? await db.from("profiles").select("display_name").eq("id", nextOnTheClock).single()
-      : { data: null };
-    await sendGroupText(
-      `${picker?.display_name ?? "Someone"} took ${teamLabel}. On the clock: ${nextPicker?.display_name ?? "?"}.`,
-      "draft",
-      { channel: "draft" },
-    );
-  }
+  const label = team
+    ? pickLabel(team.name, side, team.win_total_line)
+    : pickLabel(`Team ${teamId}`, side, null);
+  const nextOnTheClock = complete ? null : userIdOnTheClock(session.snake_order, nextPickIndex);
+  const { data: nextPicker } = nextOnTheClock
+    ? await db.from("profiles").select("display_name").eq("id", nextOnTheClock).single()
+    : { data: null };
+  await sendGroupText(
+    pickText({
+      pickNumber,
+      round,
+      pickerName: picker?.display_name ?? "Someone",
+      label,
+      nextName: complete ? null : (nextPicker?.display_name ?? "?"),
+    }),
+    "draft",
+    { channel: "draft" },
+  );
 
   return NextResponse.json({ pick });
 }
