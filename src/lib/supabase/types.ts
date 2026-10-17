@@ -1,6 +1,7 @@
-// Hand-written to match supabase/migrations/0001_init.sql. Once the
-// Supabase project exists, regenerate with:
-//   npx supabase gen types typescript --project-id <id> > src/lib/supabase/types.ts
+// Hand-written to match supabase/migrations/0001_init.sql. Everything the
+// app touches lives in the `nba` schema (profiles there is a view over the
+// NFL app's shared public.profiles). To regenerate:
+//   npx supabase gen types typescript --project-id <id> --schema nba > src/lib/supabase/types.ts
 
 export type Conference = "East" | "West";
 export type Division = "Atlantic" | "Central" | "Southeast" | "Northwest" | "Pacific" | "Southwest";
@@ -12,9 +13,22 @@ export type GameStatus = "scheduled" | "live" | "final";
 export type DraftSessionStatus = "pending" | "active" | "completed";
 export type WinTotalSource = "manual" | "api";
 
+export const DB_SCHEMA = "nba";
+
 export interface Database {
-  public: {
+  nba: {
     Tables: {
+      players: {
+        Row: {
+          user_id: string;
+          joined_at: string;
+        };
+        Insert: Partial<Database["nba"]["Tables"]["players"]["Row"]> & { user_id: string };
+        Update: Partial<Database["nba"]["Tables"]["players"]["Row"]>;
+        Relationships: [];
+      };
+      // Really a view over public.profiles, filtered to players. It's
+      // updatable, so it's typed as a table.
       profiles: {
         Row: {
           id: string;
@@ -26,12 +40,12 @@ export interface Database {
           sms_opted_out_at: string | null;
           created_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["profiles"]["Row"]> & {
           id: string;
           display_name: string;
           email: string;
         };
-        Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["profiles"]["Row"]>;
         Relationships: [];
       };
       teams: {
@@ -45,13 +59,13 @@ export interface Database {
           win_total_source: WinTotalSource;
           win_total_updated_at: string | null;
         };
-        Insert: Partial<Database["public"]["Tables"]["teams"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["teams"]["Row"]> & {
           name: string;
           code: string;
           conference: Conference;
           division: DivisionName;
         };
-        Update: Partial<Database["public"]["Tables"]["teams"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["teams"]["Row"]>;
         Relationships: [];
       };
       games: {
@@ -66,14 +80,14 @@ export interface Database {
           tipoff_utc: string;
           counts_toward_record: boolean;
         };
-        Insert: Partial<Database["public"]["Tables"]["games"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["games"]["Row"]> & {
           id: number;
           week: number;
           home_team_id: number;
           away_team_id: number;
           tipoff_utc: string;
         };
-        Update: Partial<Database["public"]["Tables"]["games"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["games"]["Row"]>;
         Relationships: [];
       };
       draft_sessions: {
@@ -87,8 +101,8 @@ export interface Database {
           created_at: string;
           completed_at: string | null;
         };
-        Insert: Partial<Database["public"]["Tables"]["draft_sessions"]["Row"]>;
-        Update: Partial<Database["public"]["Tables"]["draft_sessions"]["Row"]>;
+        Insert: Partial<Database["nba"]["Tables"]["draft_sessions"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["draft_sessions"]["Row"]>;
         Relationships: [];
       };
       draft_picks: {
@@ -102,7 +116,7 @@ export interface Database {
           pick_number: number;
           picked_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["draft_picks"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["draft_picks"]["Row"]> & {
           session_id: string;
           user_id: string;
           team_id: number;
@@ -110,7 +124,7 @@ export interface Database {
           round: number;
           pick_number: number;
         };
-        Update: Partial<Database["public"]["Tables"]["draft_picks"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["draft_picks"]["Row"]>;
         Relationships: [];
       };
       division_predictions: {
@@ -120,12 +134,12 @@ export interface Database {
           predicted_team_id: number;
           created_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["division_predictions"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["division_predictions"]["Row"]> & {
           user_id: string;
           division: Division;
           predicted_team_id: number;
         };
-        Update: Partial<Database["public"]["Tables"]["division_predictions"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["division_predictions"]["Row"]>;
         Relationships: [];
       };
       division_winners: {
@@ -134,11 +148,11 @@ export interface Database {
           team_id: number;
           set_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["division_winners"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["division_winners"]["Row"]> & {
           division: Division;
           team_id: number;
         };
-        Update: Partial<Database["public"]["Tables"]["division_winners"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["division_winners"]["Row"]>;
         Relationships: [];
       };
       tiebreaker_predictions: {
@@ -147,11 +161,11 @@ export interface Database {
           points_guess: number;
           created_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["tiebreaker_predictions"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["tiebreaker_predictions"]["Row"]> & {
           user_id: string;
           points_guess: number;
         };
-        Update: Partial<Database["public"]["Tables"]["tiebreaker_predictions"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["tiebreaker_predictions"]["Row"]>;
         Relationships: [];
       };
       app_settings: {
@@ -159,10 +173,10 @@ export interface Database {
           key: string;
           value: string | null;
         };
-        Insert: Partial<Database["public"]["Tables"]["app_settings"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["app_settings"]["Row"]> & {
           key: string;
         };
-        Update: Partial<Database["public"]["Tables"]["app_settings"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["app_settings"]["Row"]>;
         Relationships: [];
       };
       sent_messages: {
@@ -174,12 +188,12 @@ export interface Database {
           message: string;
           sent_at: string;
         };
-        Insert: Partial<Database["public"]["Tables"]["sent_messages"]["Row"]> & {
+        Insert: Partial<Database["nba"]["Tables"]["sent_messages"]["Row"]> & {
           kind: string;
           target: "self" | "group";
           message: string;
         };
-        Update: Partial<Database["public"]["Tables"]["sent_messages"]["Row"]>;
+        Update: Partial<Database["nba"]["Tables"]["sent_messages"]["Row"]>;
         Relationships: [];
       };
     };

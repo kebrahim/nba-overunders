@@ -83,7 +83,8 @@ graph LR
 ### Auth & authorization
 
 - Email/password auth via Supabase Auth. `handle_new_user` (a trigger on
-  `auth.users`) creates the matching `profiles` row on signup.
+  `auth.users`, from the NFL app) creates the shared `public.profiles` row
+  on signup; the first Hardwood visit adds it to `nba.players`.
 - Nearly every table is readable by any signed-in player — it's a 5-person
   pool, there's no reason to hide anyone's picks from each other. Writes are
   gated per-table, either to the row's own owner (`auth.uid() = id`/`user_id`)
@@ -111,7 +112,8 @@ graph LR
 
 | Table | Purpose |
 |---|---|
-| `profiles` | One row per player: display name, email, phone, commissioner/demo flags, SMS opt-out state |
+| `players` | Who's in the Hardwood contest (joined on first sign-in) |
+| `profiles` | A view over the NFL app's shared `public.profiles`, limited to Hardwood players: display name, email, phone, commissioner/demo flags, SMS opt-out state |
 | `teams` | The 30 NBA teams, each with a `win_total_line` |
 | `games` | Synced from ESPN; team records and the league-wide point total are both derived from this, not stored separately. `counts_toward_record` is false only for the NBA Cup final, which the NBA leaves out of the standings |
 | `draft_sessions` / `draft_picks` | The single 6-round snake draft; a pick is `(team, side)`, not just a team |
@@ -136,7 +138,8 @@ resolution and the guaranteed-margin bonus), `overall_leaderboard`
 | `last_synced_at` | sync job | Timestamp of the last successful ESPN fetch, shown on Leaderboard/Standings/Admin |
 
 Migrations are numbered and applied in order — see `supabase/migrations/`.
-The NFL version's nine migrations are squashed into `0001_init.sql` here.
+Everything lives in the `nba` schema of the NFL app's Supabase project;
+`0001_init.sql` assumes the NFL migrations are already applied there.
 There's no automated migration runner for this repo; apply each new
 migration's SQL by hand in the Supabase SQL editor when it's added.
 
@@ -309,19 +312,31 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 
 ## Deploying
 
-1. **Supabase.** Create a new project. In the SQL editor, run
+Hardwood shares the NFL contest's Supabase project (one free-plan project,
+one set of logins): its tables live in a separate `nba` schema, and accounts
+come from the NFL app's `public.profiles`.
+
+1. **Supabase** (the existing NFL project). In the SQL editor, run
    `supabase/migrations/0001_init.sql`, then `supabase/seed.sql`, then
    `supabase/win_totals_2026_27.sql` (copy/paste each file, in that order).
-   Under Authentication → URL Configuration, set the Site URL to your Vercel
-   address.
-2. **Vercel.** Import this repo and set the environment variables above:
-   the three Supabase values (Project Settings → API), a new random
-   `CRON_SECRET`, and the Twilio/Anthropic keys if you want texts. Deploy.
-3. **Commissioner.** Sign up on the site, then in the Supabase SQL editor
-   run `update profiles set is_commissioner = true where email = '<you>';`.
+   Then:
+   - Project Settings → Data API → **Exposed schemas**: add `nba` and save.
+   - Authentication → URL Configuration → **Redirect URLs**: add the
+     Hardwood URL (e.g. `https://nba-overunders-liart.vercel.app/**`).
+     Leave the Site URL pointing at the NFL app.
+2. **Vercel.** Set the environment variables above. The three Supabase
+   values are the *same* as the NFL app's. Add a new random `CRON_SECRET`,
+   and the Twilio/Anthropic keys if you want texts. Redeploy.
+3. **Players.** Everyone signs in with their existing NFL email and
+   password; the first visit adds them to Hardwood (`nba.players`). The
+   commissioner and demo flags carry over from the NFL app.
 4. `vercel.json` registers the sync cron automatically on deploy. For
    opt-out tracking, separately configure the Twilio Conversations webhook
    as described in `.env.local.example`/`src/app/api/twilio/inbound/route.ts`.
+
+Because accounts are shared, profile edits (display name, email, phone)
+show up in both apps, and anyone who signs up on either site gets an
+account on both — they only count toward Hardwood once they sign in here.
 
 **Season dates to update next year:** `PICKS_LOCK_AT` and
 `SEASON_WEEK_1_START_ET_DATE` in `src/lib/domain/season.ts`, the matching

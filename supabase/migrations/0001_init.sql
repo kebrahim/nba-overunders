@@ -1,7 +1,16 @@
 -- Hardwood (NBA Over/Unders) — initial schema
 --
--- Ported from the NFL contest, whose nine incremental migrations are
--- squashed into this one file since this is a fresh Supabase project.
+-- Runs inside the NFL contest's existing Supabase project, so both apps
+-- share one set of logins: everything NBA-specific lives in its own
+-- `nba` schema (no collisions with the NFL app's public.teams, games,
+-- etc.), while accounts come from the NFL app's public.profiles table and
+-- its existing auth triggers. Assumes the NFL migrations
+-- (kebrahim/nfl-over-unders, 0001-0009) are already applied: it relies on
+-- public.profiles, public.is_commissioner(), and the profile triggers
+-- (handle_new_user, protect_privileged_profile_columns, sync_profile_email).
+--
+-- After running this, add `nba` to Exposed schemas in the Supabase
+-- dashboard (Project Settings > Data API), or the app can't reach it.
 --
 -- A note on "games_played": the NBA regular season is 82 games per team.
 -- Unlike the NFL version, a draft pick resolves as soon as its outcome is
@@ -13,96 +22,45 @@
 -- wide point total (used for the tiebreaker) covers all 1,230 regular
 -- season games that count.
 
+create schema nba;
+
+grant usage on schema nba to anon, authenticated, service_role;
+alter default privileges in schema nba grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema nba grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema nba grant all on functions to anon, authenticated, service_role;
+
+set search_path = nba, public;
+
 -- ============================================================
--- profiles
+-- players + profiles
 -- ============================================================
-create table profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
-  display_name text not null,
-  email text not null,
-  -- E.164, e.g. +15551234567, for the group text thread.
-  phone text,
-  is_commissioner boolean not null default false,
-  is_demo boolean not null default false,
-  -- Set only by the Twilio inbound webhook (STOP/START replies).
-  sms_opted_out_at timestamptz,
-  created_at timestamptz not null default now()
+
+-- Who's in the Hardwood contest. An NFL-app account joins the first time
+-- it signs in here (src/lib/supabase/current-user.ts), so accounts that
+-- only ever use the NFL app don't show up on this app's leaderboard,
+-- draft order, or group text.
+create table players (
+  user_id uuid primary key references public.profiles (id) on delete cascade,
+  joined_at timestamptz not null default now()
 );
 
--- Auto-create a profile row whenever a new auth user signs up.
-create function handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (id, display_name, email)
-  values (
-    new.id,
-    coalesce(new.raw_user_meta_data ->> 'display_name', split_part(new.email, '@', 1)),
-    new.email
-  );
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function handle_new_user();
-
--- Keeps profiles.email in sync once a Supabase Auth email change is
--- confirmed (auth.users.email only updates after the confirmation link).
-create function sync_profile_email()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  update public.profiles set email = new.email where id = new.id;
-  return new;
-end;
-$$;
-
-create trigger on_auth_user_email_changed
-  after update of email on auth.users
-  for each row execute function sync_profile_email();
-
--- Prevent a signed-in user from self-escalating privileges by calling
--- profiles.update() directly with the anon key (the "users can update
--- their own profile" policy only checks auth.uid() = id). Service-role
--- and SQL editor writes are unaffected.
-create function protect_privileged_profile_columns()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if auth.role() = 'authenticated' then
-    new.is_commissioner := old.is_commissioner;
-    new.is_demo := old.is_demo;
-    new.sms_opted_out_at := old.sms_opted_out_at;
-  end if;
-  return new;
-end;
-$$;
-
-create trigger protect_profile_privileges
-  before update on profiles
-  for each row execute function protect_privileged_profile_columns();
-
--- Helper used by RLS policies below.
-create function is_commissioner()
-returns boolean
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select coalesce((select p.is_commissioner from profiles p where p.id = auth.uid()), false);
-$$;
+-- The shared public.profiles rows, limited to Hardwood players. A plain
+-- single-table view, so Postgres makes it updatable, and security_invoker
+-- means public.profiles' own RLS (read everyone, edit only yourself) and
+-- its privileged-column trigger still apply to writes made through it.
+-- Edits (display name, phone, ...) are shared with the NFL app.
+create view profiles with (security_invoker = true) as
+select
+  p.id,
+  p.display_name,
+  p.email,
+  p.phone,
+  p.is_commissioner,
+  p.is_demo,
+  p.sms_opted_out_at,
+  p.created_at
+from public.profiles p
+where exists (select 1 from nba.players pl where pl.user_id = p.id);
 
 -- ============================================================
 -- teams
@@ -157,7 +115,7 @@ create table draft_sessions (
 create table draft_picks (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references draft_sessions (id) on delete cascade,
-  user_id uuid not null references profiles (id),
+  user_id uuid not null references public.profiles (id),
   team_id integer not null references teams (id),
   side text not null check (side in ('over', 'under')),
   round integer not null,
@@ -171,7 +129,7 @@ create table draft_picks (
 -- division bonus + tiebreaker
 -- ============================================================
 create table division_predictions (
-  user_id uuid not null references profiles (id),
+  user_id uuid not null references public.profiles (id),
   division text not null check (
     division in ('Atlantic', 'Central', 'Southeast', 'Northwest', 'Pacific', 'Southwest')
   ),
@@ -189,7 +147,7 @@ create table division_winners (
 );
 
 create table tiebreaker_predictions (
-  user_id uuid primary key references profiles (id),
+  user_id uuid primary key references public.profiles (id),
   points_guess integer not null check (points_guess > 0),
   created_at timestamptz not null default now()
 );
@@ -349,7 +307,7 @@ order by total_points desc;
 -- ============================================================
 -- row level security
 -- ============================================================
-alter table profiles enable row level security;
+alter table players enable row level security;
 alter table teams enable row level security;
 alter table games enable row level security;
 alter table draft_sessions enable row level security;
@@ -360,36 +318,38 @@ alter table tiebreaker_predictions enable row level security;
 alter table app_settings enable row level security;
 alter table sent_messages enable row level security;
 
--- profiles: everyone signed in can see everyone (it's a 5-person pool);
--- a user can only edit their own row.
-create policy "profiles are viewable by authenticated users"
-  on profiles for select to authenticated using (true);
-create policy "users can update their own profile"
-  on profiles for update to authenticated using (auth.uid() = id);
+-- players: everyone signed in can see who's playing; you can only add
+-- yourself (on first sign-in). Removing a player is commissioner-only.
+create policy "players are viewable by authenticated users"
+  on players for select to authenticated using (true);
+create policy "users can join as themselves"
+  on players for insert to authenticated with check (auth.uid() = user_id);
+create policy "commissioner can remove players"
+  on players for delete to authenticated using (public.is_commissioner());
 
 -- teams, games, division_winners: read for anyone signed in; writes are
 -- commissioner-only (or via the service role from the sync job).
 create policy "teams are viewable by authenticated users"
   on teams for select to authenticated using (true);
 create policy "commissioner can modify teams"
-  on teams for all to authenticated using (is_commissioner()) with check (is_commissioner());
+  on teams for all to authenticated using (public.is_commissioner()) with check (public.is_commissioner());
 
 create policy "games are viewable by authenticated users"
   on games for select to authenticated using (true);
 create policy "commissioner can modify games"
-  on games for all to authenticated using (is_commissioner()) with check (is_commissioner());
+  on games for all to authenticated using (public.is_commissioner()) with check (public.is_commissioner());
 
 create policy "division winners are viewable by authenticated users"
   on division_winners for select to authenticated using (true);
 create policy "commissioner can set division winners"
-  on division_winners for all to authenticated using (is_commissioner()) with check (is_commissioner());
+  on division_winners for all to authenticated using (public.is_commissioner()) with check (public.is_commissioner());
 
 -- draft_sessions / draft_picks: everyone can watch the draft; picks are
 -- written by the /api/draft/pick route (service role).
 create policy "draft sessions are viewable by authenticated users"
   on draft_sessions for select to authenticated using (true);
 create policy "commissioner can manage draft sessions"
-  on draft_sessions for all to authenticated using (is_commissioner()) with check (is_commissioner());
+  on draft_sessions for all to authenticated using (public.is_commissioner()) with check (public.is_commissioner());
 
 create policy "draft picks are viewable by authenticated users"
   on draft_picks for select to authenticated using (true);
@@ -404,7 +364,7 @@ create policy "division picks visible to owner, commissioner, or after lock"
   using (
     auth.uid() = user_id
     or now() >= timestamptz '2026-10-20 19:00:00+00'
-    or exists (select 1 from profiles p where p.id = auth.uid() and p.is_commissioner)
+    or public.is_commissioner()
   );
 
 create policy "users can insert their own division predictions before lock"
@@ -423,4 +383,13 @@ create policy "users manage their own tiebreaker prediction"
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "commissioner can view sent messages"
-  on sent_messages for select to authenticated using (is_commissioner());
+  on sent_messages for select to authenticated using (public.is_commissioner());
+
+-- Belt and braces for the objects created above (default privileges only
+-- cover objects created after they're set, which these were, but this
+-- keeps the file safe to reason about if it's ever split up).
+grant all on all tables in schema nba to anon, authenticated, service_role;
+grant all on all sequences in schema nba to anon, authenticated, service_role;
+
+-- Tell the Data API to pick up the new schema's tables.
+notify pgrst, 'reload schema';

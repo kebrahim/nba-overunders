@@ -1,7 +1,7 @@
 -- All 30 NBA teams. win_total_line is left null here — load the season's
 -- lines with supabase/win_totals_2026_27.sql (or set them per team from
 -- /admin) before the draft starts.
-insert into teams (name, code, conference, division) values
+insert into nba.teams (name, code, conference, division) values
   ('Boston Celtics', 'BOS', 'East', 'Atlantic'),
   ('Brooklyn Nets', 'BKN', 'East', 'Atlantic'),
   ('New York Knicks', 'NYK', 'East', 'Atlantic'),

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
-// Deletes an auth user (profiles.id cascades from auth.users, so the
-// profile row goes with it). Blocked if they've already made any picks —
+// Removes someone from the Hardwood contest (their nba.players row). The
+// account itself is shared with the NFL app, so it's left alone — if they
+// sign in here again they'll rejoin. Blocked if they've already made picks —
 // draft_picks/division_predictions/tiebreaker_predictions.user_id don't
 // cascade, and removing a drafted player's picks would corrupt
 // draft_sessions.snake_order / pick_number sequencing anyway.
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   }
   if (userId === user.id) {
     return NextResponse.json(
-      { error: "You can't delete your own account here." },
+      { error: "You can't remove yourself here." },
       { status: 400 },
     );
   }
@@ -54,13 +55,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Can't delete — this person has already made picks. Use Reset draft (or clear their division/tiebreaker picks) first if you're sure.",
+          "Can't remove — this person has already made picks. Use Reset draft (or clear their division/tiebreaker picks) first if you're sure.",
       },
       { status: 400 },
     );
   }
 
-  const { error } = await db.auth.admin.deleteUser(userId);
+  const { error } = await db.from("players").delete().eq("user_id", userId);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

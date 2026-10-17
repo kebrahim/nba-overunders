@@ -11,7 +11,7 @@ export function DeleteParticipantButton({ userId, name }: { userId: string; name
   async function handleDelete() {
     if (
       !confirm(
-        `Delete ${name}? This removes their account and sign-in for good — they'd have to sign up again to rejoin.`,
+        `Remove ${name} from this contest? Their account (shared with the NFL app) stays; signing in here again rejoins them.`,
       )
     ) {
       return;
@@ -40,7 +40,7 @@ export function DeleteParticipantButton({ userId, name }: { userId: string; name
         disabled={pending}
         className="rounded-full border border-bad/40 px-3 py-1 text-xs font-medium text-bad hover:bg-bad hover:text-accent-ink disabled:opacity-50"
       >
-        {pending ? "Deleting…" : "Delete"}
+        {pending ? "Removing…" : "Remove"}
       </button>
       {error && <p className="mt-1 max-w-40 text-xs text-bad">{error}</p>}
     </div>
