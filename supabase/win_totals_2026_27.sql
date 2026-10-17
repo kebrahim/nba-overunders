@@ -2,7 +2,7 @@
 -- (betfanatics.com, page dated Oct 16, 2026). Not a schema migration —
 -- a one-off data load, run once after seed.sql and before the draft.
 -- Lines move with news; adjust any team from /admin before the draft.
-update teams as t
+update nba.teams as t
 set
   win_total_line = v.line,
   win_total_source = 'manual',
@@ -42,4 +42,4 @@ from (values
 where t.code = v.code;
 
 -- verify: should return 30 rows, none with a null win_total_line
-select code, name, win_total_line from teams order by win_total_line desc;
+select code, name, win_total_line from nba.teams order by win_total_line desc;

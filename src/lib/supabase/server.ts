@@ -1,16 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { Database } from "./types";
+import { DB_SCHEMA, type Database } from "./types";
 
 // Creates a Supabase client for use in Server Components, Server Actions,
 // and Route Handlers. Must be called fresh per request (not cached/reused).
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
+  return createServerClient<Database, typeof DB_SCHEMA>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      db: { schema: DB_SCHEMA },
       cookies: {
         getAll() {
           return cookieStore.getAll();
