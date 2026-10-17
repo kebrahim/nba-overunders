@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/*
+ * Game-night palette: stained hardwood floor under arena lights, a
+ * scoreboard-black surface for panels, cream court-line text, and
+ * basketball-orange accents. Committed dark theme — no light-mode
+ * variant, since the look is the point.
+ */
+@theme {
+  --color-bg: #4f321c;
+  --color-surface: #17110d;
+  --color-surface-2: #241a13;
+  --color-border: #4b3626;
+  --color-ink: #fbf3e6;
+  --color-ink-muted: #d2bca3;
+  --color-accent: #f47b20;
+  --color-accent-hover: #ff9142;
+  --color-accent-ink: #1a0f08;
+  --color-good: #5cc97a;
+  --color-bad: #f0645a;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-oswald);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+/*
+ * The floor: maple-style planks (thin dark seams every 44px, alternating
+ * plank tones), a warm spotlight from above, and a vignette toward the
+ * edges like the stands going dark.
+ */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  background-image:
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(255, 196, 128, 0.22), transparent 70%),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.5) 100%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.035) 0 44px,
+      rgba(0, 0, 0, 0.06) 44px 88px,
+      rgba(255, 255, 255, 0.015) 88px 132px,
+      rgba(0, 0, 0, 0.1) 132px 176px,
+      rgba(255, 255, 255, 0.05) 176px 220px
+    ),
+    repeating-linear-gradient(0deg, transparent 0 311px, rgba(0, 0, 0, 0.15) 311px 312px);
+  background-attachment: fixed;
+}
+
+/* Court lines, fixed behind the content: full court sideways on wide
+   screens, end-to-end vertically on phones. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 940 500' preserveAspectRatio='xMidYMid meet'%3E%3Cg fill='none' stroke='rgba(255,247,235,0.22)' stroke-width='3'%3E%3Crect x='10' y='10' width='920' height='480'/%3E%3Cline x1='470' y1='10' x2='470' y2='490'/%3E%3Ccircle cx='470' cy='250' r='60' fill='rgba(244,123,32,0.13)'/%3E%3Ccircle cx='470' cy='250' r='20'/%3E%3Crect x='10' y='170' width='190' height='160' fill='rgba(244,123,32,0.13)'/%3E%3Crect x='740' y='170' width='190' height='160' fill='rgba(244,123,32,0.13)'/%3E%3Ccircle cx='200' cy='250' r='60'/%3E%3Ccircle cx='740' cy='250' r='60'/%3E%3Cpath d='M10 40 H150 A237.5 237.5 0 0 1 150 460 H10'/%3E%3Cpath d='M930 40 H790 A237.5 237.5 0 0 0 790 460 H930'/%3E%3Ccircle cx='62.5' cy='250' r='7.5'/%3E%3Ccircle cx='877.5' cy='250' r='7.5'/%3E%3Cline x1='50' y1='220' x2='50' y2='280'/%3E%3Cline x1='890' y1='220' x2='890' y2='280'/%3E%3C/g%3E%3C/svg%3E") center / min(96vw, 1400px) auto no-repeat;
+}
+
+@media (orientation: portrait) {
+  body::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 940' preserveAspectRatio='xMidYMid meet'%3E%3Cg fill='none' stroke='rgba(255,247,235,0.22)' stroke-width='3'%3E%3Cg transform='translate(500 0) rotate(90)'%3E%3Crect x='10' y='10' width='920' height='480'/%3E%3Cline x1='470' y1='10' x2='470' y2='490'/%3E%3Ccircle cx='470' cy='250' r='60' fill='rgba(244,123,32,0.13)'/%3E%3Ccircle cx='470' cy='250' r='20'/%3E%3Crect x='10' y='170' width='190' height='160' fill='rgba(244,123,32,0.13)'/%3E%3Crect x='740' y='170' width='190' height='160' fill='rgba(244,123,32,0.13)'/%3E%3Ccircle cx='200' cy='250' r='60'/%3E%3Ccircle cx='740' cy='250' r='60'/%3E%3Cpath d='M10 40 H150 A237.5 237.5 0 0 1 150 460 H10'/%3E%3Cpath d='M930 40 H790 A237.5 237.5 0 0 0 790 460 H930'/%3E%3Ccircle cx='62.5' cy='250' r='7.5'/%3E%3Ccircle cx='877.5' cy='250' r='7.5'/%3E%3Cline x1='50' y1='220' x2='50' y2='280'/%3E%3Cline x1='890' y1='220' x2='890' y2='280'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-size: auto min(96vh, 1400px);
+  }
+}
+
+body {
+  position: relative;
+  z-index: 0;
+}
