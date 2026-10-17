@@ -132,7 +132,8 @@ resolution and the guaranteed-margin bonus), `overall_leaderboard`
 | Key | Set by | Meaning |
 |---|---|---|
 | `sms_conversation_sid` | `/admin` "Create SMS group text" | The Twilio Conversation backing the group thread |
-| `sms_enabled` | `/admin` "Group text" | Master on/off switch for automatic texts (`"true"` = on; off by default) |
+| `sms_draft_enabled` | `/admin` "Group text" | On/off switch for draft texts (`"true"` = on; off by default) |
+| `sms_weekly_enabled` | `/admin` "Group text" | On/off switch for the weekly text (`"true"` = on; off by default) |
 | `weekly_recap_tone` | `/admin` "Text tone" | Which tone preset Claude writes the weekly text in |
 | `last_weekly_summary_week` | sync job | Last week the weekly text was sent for (send-once guard) |
 | `last_synced_at` | sync job | Timestamp of the last successful ESPN fetch, shown on Leaderboard/Standings/Admin |
@@ -197,11 +198,12 @@ group MMS participants"), since every message's `Author` has to match a
 real participant. See `src/lib/notify/sms.ts` and
 `src/app/api/admin/sms/setup/route.ts`.
 
-**On/off switch.** Automatic texts are **off** until the commissioner turns
-them on under `/admin` → Group text. The test buttons there work either way.
+**On/off switches.** Draft texts and the weekly text each have their own
+switch under `/admin` → Group text, and both are **off** until the
+commissioner turns them on. The test buttons there work either way.
 
-**Automatic texts** (only while texting is on):
-- Draft starts, each pick, draft completes (`src/app/api/draft/start`,
+**Automatic texts:**
+- Draft texts: draft starts, each pick, draft completes (`src/app/api/draft/start`,
   `.../draft/pick`)
 - **Weekly text** — once a Monday-Sunday week is over and its games are all
   final (normally the Monday 9am ET sync), one message: `Week N Recap`

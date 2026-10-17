@@ -269,7 +269,7 @@ async function maybeSendWeeklyMessage(db: ReturnType<typeof createServiceRoleCli
 
   const message = await generateWeeklyMessage(completeThroughWeek);
   if (message) {
-    await sendGroupText(message, "weekly");
+    await sendGroupText(message, "weekly", { channel: "weekly" });
   } else {
     const { data: leaguePoints } = await db
       .from("league_total_points")
@@ -282,6 +282,7 @@ async function maybeSendWeeklyMessage(db: ReturnType<typeof createServiceRoleCli
       await sendGroupText(
         `Week ${completeThroughWeek} is in the books! League has scored ${leaguePoints.total_points} points so far.${paceText}${link}`,
         "weekly_fallback",
+        { channel: "weekly" },
       );
     }
   }

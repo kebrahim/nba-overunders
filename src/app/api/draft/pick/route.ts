@@ -105,7 +105,9 @@ export async function POST(request: Request) {
     : `team ${teamId} ${side}`;
 
   if (complete) {
-    await sendGroupText(`${picker?.display_name ?? "Someone"} took ${teamLabel}. Draft complete! 🏆`);
+    await sendGroupText(`${picker?.display_name ?? "Someone"} took ${teamLabel}. Draft complete! 🏆`, "draft", {
+      channel: "draft",
+    });
   } else {
     const nextOnTheClock = userIdOnTheClock(session.snake_order, nextPickIndex);
     const { data: nextPicker } = nextOnTheClock
@@ -113,6 +115,8 @@ export async function POST(request: Request) {
       : { data: null };
     await sendGroupText(
       `${picker?.display_name ?? "Someone"} took ${teamLabel}. On the clock: ${nextPicker?.display_name ?? "?"}.`,
+      "draft",
+      { channel: "draft" },
     );
   }
 

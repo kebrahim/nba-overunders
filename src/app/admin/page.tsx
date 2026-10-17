@@ -19,6 +19,7 @@ import { TeamLogo } from "@/components/team-logo";
 export const dynamic = "force-dynamic";
 
 const MESSAGE_KIND_LABELS: Record<string, string> = {
+  draft: "Draft update",
   weekly: "Weekly text",
   weekly_fallback: "Weekly text (fallback)",
   weekly_test: "Weekly text (test)",
@@ -84,7 +85,10 @@ export default async function AdminPage() {
 
   const smsConversationSid = await getSmsConversationSid();
   const recapTone = await getRecapTone();
-  const smsEnabled = await getSmsEnabled();
+  const [draftTextsEnabled, weeklyTextsEnabled] = await Promise.all([
+    getSmsEnabled("draft"),
+    getSmsEnabled("weekly"),
+  ]);
   const lastSyncedAt = await getLastSyncedAt();
   const missingPhoneNames = (participants ?? [])
     .filter((p) => !p.phone)
@@ -166,10 +170,19 @@ export default async function AdminPage() {
 
       <AdminSection
         title="Group text"
-        description="Sends draft updates and a Monday recap + preview to everyone as a group MMS thread. Set up once, then flip automatic texts on or off any time."
+        description="Sends draft updates and a Monday recap + preview to everyone as a group MMS thread. Set up once, then turn draft texts and the weekly text on or off separately."
       >
-        <div className="mb-6">
-          <SmsToggleForm enabled={smsEnabled} />
+        <div className="mb-6 space-y-3">
+          <SmsToggleForm
+            channel="draft"
+            label="Draft texts (start, each pick, who's on the clock)"
+            enabled={draftTextsEnabled}
+          />
+          <SmsToggleForm
+            channel="weekly"
+            label="Weekly text (Monday recap + preview)"
+            enabled={weeklyTextsEnabled}
+          />
         </div>
         <SmsSetup configured={!!smsConversationSid} missingPhoneNames={missingPhoneNames} />
       </AdminSection>

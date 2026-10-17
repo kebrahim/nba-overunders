@@ -2,29 +2,36 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { APP_NAME, APP_TAGLINE, SITE_HOST } from "@/lib/config/app";
 
 const CONVERSATION_SID_KEY = "sms_conversation_sid";
-const SMS_ENABLED_KEY = "sms_enabled";
 const MESSAGE_PREFIX = `🏀 ${APP_NAME}:`;
 
+/** The kinds of automatic group text, each with its own on/off switch. */
+export type SmsChannel = "draft" | "weekly";
+
+const SMS_ENABLED_KEYS: Record<SmsChannel, string> = {
+  draft: "sms_draft_enabled",
+  weekly: "sms_weekly_enabled",
+};
+
 /**
- * Whether automatic group texts (draft alerts, the weekly text) go out
- * at all. Off until the commissioner turns it on
- * from /admin; admin test buttons send regardless.
+ * Whether one kind of automatic group text (draft alerts or the weekly
+ * text) goes out. Each is off until the commissioner turns it on from
+ * /admin; admin test buttons send regardless.
  */
-export async function getSmsEnabled(): Promise<boolean> {
+export async function getSmsEnabled(channel: SmsChannel): Promise<boolean> {
   const db = createServiceRoleClient();
   const { data } = await db
     .from("app_settings")
     .select("value")
-    .eq("key", SMS_ENABLED_KEY)
+    .eq("key", SMS_ENABLED_KEYS[channel])
     .maybeSingle();
   return data?.value === "true";
 }
 
-export async function setSmsEnabled(enabled: boolean): Promise<void> {
+export async function setSmsEnabled(channel: SmsChannel, enabled: boolean): Promise<void> {
   const db = createServiceRoleClient();
   await db
     .from("app_settings")
-    .upsert({ key: SMS_ENABLED_KEY, value: String(enabled) }, { onConflict: "key" });
+    .upsert({ key: SMS_ENABLED_KEYS[channel], value: String(enabled) }, { onConflict: "key" });
 }
 
 export async function getSmsConversationSid(): Promise<string | null> {
@@ -68,7 +75,8 @@ async function logSentMessage(kind: string, target: "self" | "group", message: s
 
 /**
  * Posts a message into the group MMS thread, if one's been set up and
- * texting is turned on (`force` skips that check, for admin tests).
+ * that `channel`'s texts are turned on (`force` skips that check, for
+ * admin tests).
  * Never throws — a notification failure should never break the draft
  * pick or score sync it's attached to — but callers that do care (e.g.
  * an admin test button) can inspect the returned result. `kind` is a
@@ -78,9 +86,11 @@ async function logSentMessage(kind: string, target: "self" | "group", message: s
 export async function sendGroupText(
   message: string,
   kind: string = "group",
-  { force = false }: { force?: boolean } = {},
+  { channel, force = false }: { channel?: SmsChannel; force?: boolean } = {},
 ): Promise<SendResult> {
-  if (!force && !(await getSmsEnabled())) return { ok: false, error: "Texting is turned off." };
+  if (!force && !(channel && (await getSmsEnabled(channel)))) {
+    return { ok: false, error: "Texting is turned off." };
+  }
 
   const auth = twilioAuthHeader();
   if (!auth) return { ok: false, error: "Twilio isn't configured." };

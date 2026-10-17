@@ -2,25 +2,34 @@
 
 import { useActionState } from "react";
 import { saveSmsEnabled, type AdminFormState } from "./actions";
+import type { SmsChannel } from "@/lib/notify/sms";
 
 const initialState: AdminFormState = { error: null, success: false };
 
 /**
- * Master switch for automatic group texts (draft alerts and the weekly
- * text). The test buttons below still work while it's off.
+ * On/off switch for one kind of automatic group text (draft alerts or
+ * the weekly text). The test buttons below still work while it's off.
  */
-export function SmsToggleForm({ enabled }: { enabled: boolean }) {
+export function SmsToggleForm({
+  channel,
+  label,
+  enabled,
+}: {
+  channel: SmsChannel;
+  label: string;
+  enabled: boolean;
+}) {
   const [state, action, pending] = useActionState(saveSmsEnabled, initialState);
 
   return (
     <form action={action} className="flex flex-wrap items-center gap-3">
+      <input type="hidden" name="channel" value={channel} />
       <input type="hidden" name="enabled" value={enabled ? "false" : "true"} />
       <span className="text-sm">
-        Automatic texts are{" "}
+        {label}:{" "}
         <span className={`font-semibold ${enabled ? "text-good" : "text-bad"}`}>
           {enabled ? "on" : "off"}
         </span>
-        .
       </span>
       <button
         type="submit"

@@ -138,7 +138,9 @@ export async function saveSmsEnabled(
     .single();
   if (!profile?.is_commissioner) return { error: "Commissioner only.", success: false };
 
-  await setSmsEnabled(formData.get("enabled") === "true");
+  const channel = formData.get("channel");
+  if (channel !== "draft" && channel !== "weekly") return { error: "Unknown text type.", success: false };
+  await setSmsEnabled(channel, formData.get("enabled") === "true");
 
   revalidatePath("/admin");
   return { error: null, success: true };

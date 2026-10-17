@@ -64,7 +64,11 @@ export async function POST() {
   }
 
   const order = snakeOrder.map((id) => nameById.get(id) ?? "?").join(" → ");
-  await sendGroupText(`The draft has started! Order: ${order}. On the clock: ${nameById.get(snakeOrder[0])}.`);
+  await sendGroupText(
+    `The draft has started! Order: ${order}. On the clock: ${nameById.get(snakeOrder[0])}.`,
+    "draft",
+    { channel: "draft" },
+  );
 
   return NextResponse.json({ session });
 }

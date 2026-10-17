@@ -27,11 +27,7 @@ export function DivisionWinnersForm({
     <form action={action} className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         {DIVISIONS.map((division) => {
-          const [conference, ...rest] = division.split(" ");
-          const divisionName = rest.join(" ");
-          const options = teams.filter(
-            (t) => t.conference === conference && t.division === divisionName,
-          );
+          const options = teams.filter((t) => t.division === division);
           return (
             <label key={division} className="flex items-center justify-between gap-3 text-sm">
               {division}

@@ -29,11 +29,7 @@ export function DivisionForm({
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         {DIVISIONS.map((division) => {
-          const [conference, ...rest] = division.split(" ");
-          const divisionName = rest.join(" ");
-          const options = teams.filter(
-            (t) => t.conference === conference && t.division === divisionName,
-          );
+          const options = teams.filter((t) => t.division === division);
 
           return (
             <div key={division} className="space-y-1">
