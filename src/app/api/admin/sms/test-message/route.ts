@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSmsConversationSid, sendDirectText, sendGroupText } from "@/lib/notify/sms";
-import { findLatestRecapWeek, generateWeeklyMessage } from "@/lib/notify/weekly-recap";
+import {
+  findLatestRecapWeek,
+  generateSeasonOpenerMessage,
+  generateWeeklyMessage,
+} from "@/lib/notify/weekly-recap";
 
 // Sends the same weekly recap + preview text the Monday sync job sends,
 // on demand, to preview tone changes or verify Twilio wiring. Covers the
-// latest week with any final game (the real job waits for a full week).
+// latest week with any final game (the real job waits for a full week),
+// or, before any game is final, the week 1 preview the season opens with.
 type Target = "self" | "group";
 
 export async function POST(request: Request) {
@@ -33,10 +38,7 @@ export async function POST(request: Request) {
   }
 
   const week = await findLatestRecapWeek();
-  if (week == null) {
-    return NextResponse.json({ error: "No completed games yet to recap." }, { status: 400 });
-  }
-  const message = await generateWeeklyMessage(week);
+  const message = week == null ? await generateSeasonOpenerMessage() : await generateWeeklyMessage(week);
   if (!message) {
     return NextResponse.json(
       {

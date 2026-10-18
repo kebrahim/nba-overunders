@@ -279,7 +279,10 @@ async function generateWeekPreviewMessage(week: number): Promise<string | null> 
       output_config: { effort: "low" },
       system: buildPreviewSystemPrompt(tone),
       messages: [
-        { role: "user", content: `Week ${week} upcoming drafted-team matchups:\n${JSON.stringify(picks, null, 2)}` },
+        {
+          role: "user",
+          content: `${week === 1 ? "The season tips off this week, so every team is 0-0.\n\n" : ""}Week ${week} upcoming drafted-team matchups:\n${JSON.stringify(picks, null, 2)}`,
+        },
       ],
     });
 
@@ -310,4 +313,12 @@ export async function generateWeeklyMessage(week: number): Promise<string | null
   ]);
   const parts = [recap, preview].filter((p): p is string => !!p);
   return parts.length > 0 ? parts.join("\n\n") : null;
+}
+
+/**
+ * The season's first weekly text, sent the Monday that week 1 starts:
+ * there's nothing to recap yet, so it's just the week 1 preview.
+ */
+export async function generateSeasonOpenerMessage(): Promise<string | null> {
+  return generateWeekPreviewMessage(1);
 }

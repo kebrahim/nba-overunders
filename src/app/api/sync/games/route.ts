@@ -12,7 +12,7 @@ import { projectedLeaguePoints, TOTAL_REGULAR_SEASON_GAMES } from "@/lib/domain/
 import { recordSyncCompleted } from "@/lib/domain/sync-status";
 import { SITE_HOST } from "@/lib/config/app";
 import { sendGroupText } from "@/lib/notify/sms";
-import { generateWeeklyMessage } from "@/lib/notify/weekly-recap";
+import { generateSeasonOpenerMessage, generateWeeklyMessage } from "@/lib/notify/weekly-recap";
 
 // Pulls current scores from ESPN's public (unofficial, undocumented but
 // widely relied on) scoreboard endpoint and upserts them into `games`.
@@ -30,6 +30,7 @@ import { generateWeeklyMessage } from "@/lib/notify/weekly-recap";
 const ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard";
 const MIN_WEEK = 1;
 const LAST_WEEKLY_SUMMARY_KEY = "last_weekly_summary_week";
+const SEASON_OPENER_SENT_KEY = "season_opener_text_sent";
 // ESPN season types: 1 preseason, 2 regular season, 3 postseason, 5 play-in.
 const REGULAR_SEASON_TYPE = 2;
 
@@ -257,7 +258,10 @@ async function maybeSendWeeklyMessage(db: ReturnType<typeof createServiceRoleCli
     if (!entry || entry.total === 0 || entry.final < entry.total || !weekIsOver(week, today)) break;
     completeThroughWeek = week;
   }
-  if (completeThroughWeek === 0) return;
+  if (completeThroughWeek === 0) {
+    await maybeSendSeasonOpener(db, today);
+    return;
+  }
 
   const { data: setting } = await db
     .from("app_settings")
@@ -290,6 +294,29 @@ async function maybeSendWeeklyMessage(db: ReturnType<typeof createServiceRoleCli
   await db
     .from("app_settings")
     .upsert({ key: LAST_WEEKLY_SUMMARY_KEY, value: String(completeThroughWeek) }, { onConflict: "key" });
+}
+
+/**
+ * Before any week has finished, the Monday sync that opens week 1 sends
+ * a week 1 preview instead, once. Like the weekly text, it's marked done
+ * even when the weekly switch is off.
+ */
+async function maybeSendSeasonOpener(db: ReturnType<typeof createServiceRoleClient>, today: string) {
+  if (today < SEASON_WEEK_1_START) return;
+
+  const { data: sent } = await db
+    .from("app_settings")
+    .select("value")
+    .eq("key", SEASON_OPENER_SENT_KEY)
+    .maybeSingle();
+  if (sent?.value === "true") return;
+
+  const message = await generateSeasonOpenerMessage();
+  if (message) await sendGroupText(message, "weekly", { channel: "weekly" });
+
+  await db
+    .from("app_settings")
+    .upsert({ key: SEASON_OPENER_SENT_KEY, value: "true" }, { onConflict: "key" });
 }
 
 /** True once the Sunday that ends `week` is before `today` (both ET dates). */

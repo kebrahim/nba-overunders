@@ -211,6 +211,8 @@ commissioner turns them on. The test buttons there work either way.
   week ahead, in whatever tone the commissioner picked. Claude gets each
   pick's record, pace and record-needed as context. Falls back to a plain
   scoring-pace line if `ANTHROPIC_API_KEY` isn't set or generation fails.
+- **Season opener** — the Monday week 1 starts (Oct 19, 2026), the 9am sync
+  sends just a `Week 1 Preview`, once, since there's nothing to recap yet.
 
 The weekly text is idempotent per week via `last_weekly_summary_week`, so
 the once-a-day sync job can check every run without double-sending. Weeks
