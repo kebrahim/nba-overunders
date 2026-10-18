@@ -1,18 +1,18 @@
 "use client";
 
 import { useActionState } from "react";
-import { RECAP_TONES, type RecapTone } from "@/lib/notify/weekly-recap";
+import { RECAP_TONE_SETTINGS, type RecapToneSetting } from "@/lib/notify/weekly-recap";
 import { saveRecapTone, type AdminFormState } from "./actions";
 
 const initialState: AdminFormState = { error: null, success: false };
 
-export function RecapToneForm({ current }: { current: RecapTone }) {
+export function RecapToneForm({ current }: { current: RecapToneSetting }) {
   const [state, action, pending] = useActionState(saveRecapTone, initialState);
 
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-2 sm:grid-cols-2">
-        {RECAP_TONES.map((tone) => (
+        {RECAP_TONE_SETTINGS.map((tone) => (
           <label
             key={tone.id}
             className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm has-checked:border-accent"

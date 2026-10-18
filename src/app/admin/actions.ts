@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { DIVISIONS } from "@/lib/domain/divisions";
 import { setSmsEnabled } from "@/lib/notify/sms";
-import { RECAP_TONES, setRecapTone, type RecapTone } from "@/lib/notify/weekly-recap";
+import { RECAP_TONE_SETTINGS, setRecapTone, type RecapToneSetting } from "@/lib/notify/weekly-recap";
 
 export interface AdminFormState {
   error: string | null;
@@ -111,11 +111,11 @@ export async function saveRecapTone(
   if (!profile?.is_commissioner) return { error: "Commissioner only.", success: false };
 
   const tone = formData.get("tone");
-  if (!RECAP_TONES.some((t) => t.id === tone)) {
+  if (!RECAP_TONE_SETTINGS.some((t) => t.id === tone)) {
     return { error: "Invalid tone.", success: false };
   }
 
-  await setRecapTone(tone as RecapTone);
+  await setRecapTone(tone as RecapToneSetting);
 
   revalidatePath("/admin");
   return { error: null, success: true };

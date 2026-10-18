@@ -86,14 +86,22 @@ async function gatherWeekData(week: number): Promise<PickResult[]> {
 
 export type RecapTone = "nice" | "playful" | "snarky" | "brutal";
 
+/** What the commissioner picks on /admin: a tone, or a new random one each week. */
+export type RecapToneSetting = RecapTone | "random";
+
 export const RECAP_TONE_KEY = "weekly_recap_tone";
-export const DEFAULT_RECAP_TONE: RecapTone = "brutal";
+export const DEFAULT_RECAP_TONE: RecapToneSetting = "brutal";
 
 export const RECAP_TONES: { id: RecapTone; label: string; description: string }[] = [
   { id: "nice", label: "Nice", description: "Warm and encouraging, cheers everyone on." },
   { id: "playful", label: "Playful", description: "Light teasing, good-natured banter." },
   { id: "snarky", label: "Snarky", description: "Sarcastic ribbing, still friendly underneath." },
   { id: "brutal", label: "Brutal", description: "Merciless roast, nobody gets off easy." },
+];
+
+export const RECAP_TONE_SETTINGS: { id: RecapToneSetting; label: string; description: string }[] = [
+  ...RECAP_TONES,
+  { id: "random", label: "Random", description: "A different one of the 4 each week, named in the text." },
 ];
 
 const RECAP_TONE_INSTRUCTIONS: Record<RecapTone, string> = {
@@ -113,7 +121,7 @@ ${RECAP_TONE_INSTRUCTIONS[tone]}
 Format: one bullet point per pick or matchup worth calling out (2-4 bullets), each starting with "• " on its own line — real line breaks between bullets, not run together in one paragraph. Skip unremarkable picks if space is tight; spend the bullets on whoever's result mattered most. Keep each bullet to one short sentence. Don't include a title or header line — that's added separately. No hashtags, no markdown besides the bullet character, no emoji beyond an occasional 🏀.`;
 }
 
-export async function getRecapTone(): Promise<RecapTone> {
+export async function getRecapTone(): Promise<RecapToneSetting> {
   const db = createServiceRoleClient();
   const { data } = await db
     .from("app_settings")
@@ -121,10 +129,10 @@ export async function getRecapTone(): Promise<RecapTone> {
     .eq("key", RECAP_TONE_KEY)
     .maybeSingle();
   const value = data?.value;
-  return RECAP_TONES.some((t) => t.id === value) ? (value as RecapTone) : DEFAULT_RECAP_TONE;
+  return RECAP_TONE_SETTINGS.some((t) => t.id === value) ? (value as RecapToneSetting) : DEFAULT_RECAP_TONE;
 }
 
-export async function setRecapTone(tone: RecapTone): Promise<void> {
+export async function setRecapTone(tone: RecapToneSetting): Promise<void> {
   const db = createServiceRoleClient();
   await db.from("app_settings").upsert({ key: RECAP_TONE_KEY, value: tone }, { onConflict: "key" });
 }
@@ -148,14 +156,13 @@ export async function findLatestRecapWeek(): Promise<number | null> {
  * results. Returns null (never throws) if data or the API call fails, so
  * the caller can fall back to a simpler templated message.
  */
-async function generateWeeklyRecapMessage(week: number): Promise<string | null> {
+async function generateWeeklyRecapMessage(week: number, tone: RecapTone): Promise<string | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
   try {
     const results = await gatherWeekData(week);
     if (results.length === 0) return null;
 
-    const tone = await getRecapTone();
     const client = new Anthropic();
     const response = await client.messages.create({
       model: "claude-opus-5",
@@ -264,14 +271,13 @@ Format: one bullet point per pick or matchup worth calling out (2-4 bullets), ea
  * the same admin-configured tone as the recap. Returns null (never
  * throws) if there's nothing to preview or the API call fails.
  */
-async function generateWeekPreviewMessage(week: number): Promise<string | null> {
+async function generateWeekPreviewMessage(week: number, tone: RecapTone): Promise<string | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
   try {
     const picks = await gatherUpcomingWeekData(week);
     if (picks.length === 0) return null;
 
-    const tone = await getRecapTone();
     const client = new Anthropic();
     const response = await client.messages.create({
       model: "claude-opus-5",
@@ -301,18 +307,35 @@ async function generateWeekPreviewMessage(week: number): Promise<string | null> 
 }
 
 /**
+ * The tone for one weekly text, plus a line naming it when the
+ * commissioner chose Random, so the group knows what they got.
+ */
+async function resolveTone(): Promise<{ tone: RecapTone; header: string | null }> {
+  const setting = await getRecapTone();
+  if (setting !== "random") return { tone: setting, header: null };
+  const pick = RECAP_TONES[Math.floor(Math.random() * RECAP_TONES.length)];
+  return { tone: pick.id, header: `🎲 This week's random tone: ${pick.label}` };
+}
+
+function withToneHeader(header: string | null, parts: (string | null)[]): string | null {
+  const body = parts.filter((p): p is string => !!p);
+  if (body.length === 0) return null;
+  return [header, ...body].filter(Boolean).join("\n\n");
+}
+
+/**
  * The one weekly group text: a recap of `week` (just finished) followed
- * by a preview of the week ahead. Returns null if neither part could be
- * generated; either part alone is still worth sending (e.g. no preview
- * after the season's final week).
+ * by a preview of the week ahead, both in the same tone. Returns null if
+ * neither part could be generated; either part alone is still worth
+ * sending (e.g. no preview after the season's final week).
  */
 export async function generateWeeklyMessage(week: number): Promise<string | null> {
+  const { tone, header } = await resolveTone();
   const [recap, preview] = await Promise.all([
-    generateWeeklyRecapMessage(week),
-    generateWeekPreviewMessage(week + 1),
+    generateWeeklyRecapMessage(week, tone),
+    generateWeekPreviewMessage(week + 1, tone),
   ]);
-  const parts = [recap, preview].filter((p): p is string => !!p);
-  return parts.length > 0 ? parts.join("\n\n") : null;
+  return withToneHeader(header, [recap, preview]);
 }
 
 /**
@@ -320,5 +343,6 @@ export async function generateWeeklyMessage(week: number): Promise<string | null
  * there's nothing to recap yet, so it's just the week 1 preview.
  */
 export async function generateSeasonOpenerMessage(): Promise<string | null> {
-  return generateWeekPreviewMessage(1);
+  const { tone, header } = await resolveTone();
+  return withToneHeader(header, [await generateWeekPreviewMessage(1, tone)]);
 }

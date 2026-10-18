@@ -134,7 +134,7 @@ resolution and the guaranteed-margin bonus), `overall_leaderboard`
 | `sms_conversation_sid` | `/admin` "Create SMS group text" | The Twilio Conversation backing the group thread |
 | `sms_draft_enabled` | `/admin` "Group text" | On/off switch for draft texts (`"true"` = on; off by default) |
 | `sms_weekly_enabled` | `/admin` "Group text" | On/off switch for the weekly text (`"true"` = on; off by default) |
-| `weekly_recap_tone` | `/admin` "Text tone" | Which tone preset Claude writes the weekly text in |
+| `weekly_recap_tone` | `/admin` "Text tone" | Which tone preset Claude writes the weekly text in (`random` picks one of the 4 each week and names it in the text) |
 | `last_weekly_summary_week` | sync job | Last week the weekly text was sent for (send-once guard) |
 | `last_synced_at` | sync job | Timestamp of the last successful ESPN fetch, shown on Leaderboard/Standings/Admin |
 
