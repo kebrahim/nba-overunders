@@ -1,8 +1,12 @@
 // Opening tip-off of the 2026-27 regular season: Celtics at Pistons,
-// 3:00 PM ET on Tuesday 10/20/2026 (EDT, UTC-4). Division-winner picks
-// and tiebreaker guesses lock at this instant. Keep in sync with the
-// matching timestamps in supabase/migrations/0001_init.sql.
-export const PICKS_LOCK_AT = "2026-10-20T19:00:00Z";
+// 3:00 PM ET on Tuesday 10/20/2026 (EDT, UTC-4).
+export const OPENING_TIP_AT = "2026-10-20T19:00:00Z";
+
+// Division-winner picks and tiebreaker guesses lock at this instant. It
+// was opening tip, then the commissioner reopened them through the end of
+// Thursday 10/22/2026 (11:59 PM ET). Keep in sync with the timestamps in
+// supabase/migrations/0002_extend_prediction_lock.sql.
+export const PICKS_LOCK_AT = "2026-10-23T03:59:00Z";
 
 export function picksLocked(now: Date = new Date()): boolean {
   return now.getTime() >= new Date(PICKS_LOCK_AT).getTime();

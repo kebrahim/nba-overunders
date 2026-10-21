@@ -21,7 +21,7 @@ export async function saveDivisionPredictions(
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in.", success: false };
   if (picksLocked()) {
-    return { error: "Division picks are locked — the season has started.", success: false };
+    return { error: "Division picks are locked.", success: false };
   }
 
   const { data: profile } = await supabase
@@ -60,7 +60,7 @@ export async function saveTiebreaker(
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in.", success: false };
   if (picksLocked()) {
-    return { error: "The tiebreaker guess is locked — the season has started.", success: false };
+    return { error: "The tiebreaker guess is locked.", success: false };
   }
 
   const { data: profile } = await supabase

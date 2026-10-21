@@ -189,7 +189,7 @@ export default async function LeaderboardPage() {
         </h2>
         {!picksAreVisible && (
           <p className="text-sm text-ink-muted">
-            Division picks will be shown here once they lock at opening tip.
+            Division picks will be shown here once they lock.
           </p>
         )}
         {rows.map((row) => {

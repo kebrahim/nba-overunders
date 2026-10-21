@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/current-user";
 import { demoOverallLeaderboard } from "@/lib/demo/data";
-import { PICKS_LOCK_AT } from "@/lib/domain/season";
+import { OPENING_TIP_AT } from "@/lib/domain/season";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config/app";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ async function getSeasonBanner(): Promise<SeasonBanner | null> {
   if (!games || games.length === 0) {
     return {
       headline: "Draft's complete — tip-off is almost here",
-      detail: `Opening tip: ${new Date(PICKS_LOCK_AT).toLocaleString("en-US", {
+      detail: `Opening tip: ${new Date(OPENING_TIP_AT).toLocaleString("en-US", {
         timeZone: "America/New_York",
         dateStyle: "medium",
         timeStyle: "short",

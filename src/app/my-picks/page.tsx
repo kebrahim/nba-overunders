@@ -207,10 +207,10 @@ export default async function MyPicksPage() {
         <p className="mt-1 text-sm text-ink-muted">
           1 point per correct pick.{" "}
           {isDemo ? null : picksLocked() ? (
-            <span className="text-bad">Locked — the season has started.</span>
+            <span className="text-bad">Locked.</span>
           ) : (
             <>
-              Locks at opening tip:{" "}
+              Locks:{" "}
               {new Date(PICKS_LOCK_AT).toLocaleString("en-US", {
                 timeZone: "America/New_York",
                 dateStyle: "medium",
@@ -278,7 +278,7 @@ export default async function MyPicksPage() {
           </>
         ) : (
           <p className="mt-1 text-sm text-ink-muted">
-            Everyone&apos;s picks will be visible here once they lock at opening tip.
+            Everyone&apos;s picks will be visible here once they lock.
           </p>
         )}
       </div>
@@ -301,10 +301,10 @@ export default async function MyPicksPage() {
         <p className="mt-1 text-sm text-ink-muted">
           Only used if the final standings are tied.{" "}
           {isDemo ? null : picksLocked() ? (
-            <span className="text-bad">Locked — the season has started.</span>
+            <span className="text-bad">Locked.</span>
           ) : (
             <>
-              Locks at opening tip:{" "}
+              Locks:{" "}
               {new Date(PICKS_LOCK_AT).toLocaleString("en-US", {
                 timeZone: "America/New_York",
                 dateStyle: "medium",

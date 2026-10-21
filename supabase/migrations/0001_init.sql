@@ -357,8 +357,8 @@ create policy "draft picks are viewable by authenticated users"
 -- division_predictions: locked at opening tip-off (3:00 PM ET / 19:00 UTC
 -- on 10/20/2026). Before the lock a user sees only their own picks (the
 -- commissioner sees everyone's); after it, everyone sees everyone's.
--- Keep the timestamp in sync with PICKS_LOCK_AT in
--- src/lib/domain/season.ts.
+-- Superseded by 0002_extend_prediction_lock.sql, which moves the lock
+-- (PICKS_LOCK_AT in src/lib/domain/season.ts).
 create policy "division picks visible to owner, commissioner, or after lock"
   on division_predictions for select to authenticated
   using (
